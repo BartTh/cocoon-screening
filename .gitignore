@@ -1,6 +1,7 @@
 data/raw/
 data/patches/
 data/predictions/
+sandbox/
 models/**/*.h5
 models/**/*.zip
 models/**/*.pt
