@@ -1,0 +1,10 @@
+data/raw/
+data/patches/
+data/predictions/
+models/**/*.h5
+models/**/*.zip
+models/**/*.pt
+*.sqlite
+.ipynb_checkpoints/
+__pycache__/
+.venv/
