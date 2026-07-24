@@ -1,6 +1,4 @@
-data/raw/
-data/patches/
-data/predictions/
+data/
 sandbox/
 models/**/*.h5
 models/**/*.zip
