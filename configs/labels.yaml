@@ -1,0 +1,12 @@
+LABEL_LIST: ["Prepupae", "Parasites", "Empty", "Machine Damaged", "Chalkbrood", "Pollen Balls", "Other (Unsure)", "Exclude"]
+
+LABEL_COLOR: {
+    "Prepupae": "#3B9638", # Green #0
+    "Parasites": "#D00B0B",  # Red #1
+    "Empty": "#785EF0",  # Purple #2
+    "Machine Damaged": "#DC26A5", # Magenta #3
+    "Chalkbrood": "#FE6100", # Orange #4
+    "Pollen Balls": "#FFB000", # Yellow #5
+    "Other (Unsure)": "#0BA8CC", # Cyan #6
+    "Exclude": "#000000"  # Black #7
+}
