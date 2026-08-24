@@ -1,6 +1,6 @@
 # Cocoon Screening
 
-The application detects individual cocoons with a custom StarDist instance-segmentation model and allows the user to assign a class label to each detected cocoon. E
+The application detects individual cocoons with a custom StarDist instance-segmentation model and allows the user to assign a class label to each detected cocoon.
 
 ## Repository Structure
 
