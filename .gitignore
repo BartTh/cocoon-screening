@@ -12,7 +12,6 @@ models/**/*.zip
 models/**/*.pt
 
 # Generated files
-*.json
 *.png
 
 # Python cache
