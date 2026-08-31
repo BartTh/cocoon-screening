@@ -23,18 +23,38 @@ jobs:
 
       - name: Build the Mac app
         run: |
-          pyinstaller --windowed --name CocoonAnnotationTool \
-            --add-data "configs:configs" \
-            --add-data "models/bee_cocoon_stardist/config.json:models/bee_cocoon_stardist" \
-            --add-data "models/bee_cocoon_stardist/weights_best.h5:models/bee_cocoon_stardist" \
+          pyinstaller --windowed --name="Cocoon Annotation Tool" \
+            --add-data="configs:configs" \
+            --add-data="models/bee_cocoon_stardist/config.json:models/bee_cocoon_stardist" \
+            --add-data="models/bee_cocoon_stardist/weights_best.h5:models/bee_cocoon_stardist" \
             main.py
 
-      - name: Zip the app
+      - name: Install brew
         run: |
-          ditto -c -k --sequesterRsrc --keepParent dist/CocoonAnnotationTool.app CocoonAnnotationTool-macOS.zip
+          brew install create-dmg
+          
+      - name: Prepare DMG folder
+        run: |
+          mkdir -p dist/dmg
+          rm -rf dist/dmg/*
+          cp -R "dist/Cocoon Annotation Tool.app" dist/dmg/
 
-      - name: Save the finished app
+      - name: Create macOS Disk Image
+        run: |
+          rm -f "dist/Cocoon Annotation Tool.dmg"
+
+          create-dmg \
+            --volname "Cocoon Annotation Tool" \
+            --window-pos 200 120 \
+            --window-size 600 300 \
+            --hide-extension "Cocoon Annotation Tool.app" \
+            --app-drop-link 425 120 \
+            "dist/Cocoon Annotation Tool.dmg" \
+            "dist/dmg/" || true
+
+      - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: CocoonAnnotationTool-macOS
-          path: CocoonAnnotationTool-macOS.zip
+          name: CocoonAnnotationTool
+          path: dist/CocoonAnnotationTool.dmg
+          retention-days: 1
