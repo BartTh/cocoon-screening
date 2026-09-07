@@ -1,10 +1,9 @@
 from pathlib import Path
 import cv2
 import numpy as np
-from csbdeep.utils import normalize
 import logging
-from stardist.models import StarDist2D
 from src.cocoon_screening.paths import bundled_models_dir
+from src.cocoon_screening.io.atomic import image_bytes, write_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +12,9 @@ class StardistPredictor:
         self.use_custom_model = use_custom_model
         self._model = None
 
-    def model(self) -> StarDist2D:
+    def model(self):
         if self._model is None:
+            from stardist.models import StarDist2D
             if self.use_custom_model:
                 self._model = StarDist2D(
                     None,
@@ -27,6 +27,7 @@ class StardistPredictor:
         return self._model
 
     def predict(self, image_path: Path):
+        from csbdeep.utils import normalize
         image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
 
         if image is None:
@@ -66,6 +67,8 @@ class StardistPredictor:
             exist_ok=True,
         )
 
-        cv2.imwrite(str(label_path), labels.astype(np.uint16))
+        if labels.max() > np.iinfo(np.uint16).max:
+            raise ValueError("Too many instances for a 16-bit label map.")
+        write_bytes(label_path, image_bytes(labels.astype(np.uint16), label_path))
         logger.info("Saved label map under %s with %s detected cocoon instances", label_path, int(labels.max()))
         return label_path

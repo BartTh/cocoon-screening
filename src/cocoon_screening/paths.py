@@ -11,7 +11,15 @@ def bundled_resource_path(relative_path: str | Path) -> Path:
     return Path(__file__).resolve().parents[2] / relative_path
 
 def user_data_dir() -> Path:
-    base = Path(os.getenv("LOCALAPPDATA", Path.home()))
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+    if not base.is_absolute():
+        base = (Path.home() / "AppData" / "Local" if sys.platform == "win32"
+                else Path.home() / ".local" / "share")
     path = base / APP_NAME
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -29,24 +37,49 @@ def bundled_configs_dir() -> Path:
 
 def app_install_dir() -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent
+        executable = Path(sys.executable).resolve()
+        if sys.platform == "darwin":
+            for parent in executable.parents:
+                if parent.suffix.lower() == ".app":
+                    return parent.parent
+        return executable.parent
     return Path(__file__).resolve().parents[2]
 
 
+def normalize_directory(value: str | Path) -> Path:
+    """Require an explicit location, independent of the launch working directory."""
+    text = str(value).strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1]
+    if not text:
+        raise ValueError("Please choose a directory using Browse or enter its full path.")
+    path = Path(os.path.expandvars(text)).expanduser()
+    if not path.is_absolute():
+        raise ValueError("Please enter a full directory path or select it using Browse.")
+    return path.resolve()
+
+
+def browse_start_directory(*candidates) -> Path:
+    """Ignore missing/unavailable defaults without creating any dataset folders."""
+    for candidate in (*candidates, Path.home()):
+        if candidate is None:
+            continue
+        try:
+            path = normalize_directory(candidate)
+            if path.is_dir() and os.access(path, os.R_OK | os.X_OK):
+                return path
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return Path.home()
+
+
 def default_images_dir() -> Path:
-    local_images = app_install_dir() / "data" / "images"
+    return browse_start_directory(app_install_dir() / "data" / "images")
 
-    if local_images.exists():
-        return local_images
-
-    fallback_directory = Path.home()
-    return fallback_directory
 
 def default_raw_dir() -> Path:
-    local_raw = app_install_dir() / "data" / "raw"
+    return browse_start_directory(app_install_dir() / "data" / "raw")
 
-    if local_raw.exists():
-        return local_raw
 
-    fallback_directory = Path.home()
-    return fallback_directory
+def default_review_dir() -> Path:
+    return browse_start_directory(app_install_dir() / "data" / "for_review")

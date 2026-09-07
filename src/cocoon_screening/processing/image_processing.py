@@ -56,7 +56,6 @@ def render_completed_image_overlay(image, crops, classifications, labels_set, al
         base = image.copy()
 
     overlay = base.copy()
-    alpha = 0.15
 
     for instance_id, crop in crops.items():
         matches = classifications.loc[
@@ -141,28 +140,25 @@ def get_instance_bounding_boxes(label_image):
     if label_image.ndim == 3:
         label_image = label_image[:, :, 0]
 
-    boxes = []
-
-    for instance_id in sorted(np.unique(label_image)):
-        if instance_id == 0:
-            continue
-
-        ys, xs = np.where(label_image == instance_id)
-
-        if len(xs) == 0:
-            continue
-
-        min_x = int(xs.min())
-        max_x = int(xs.max())
-        min_y = int(ys.min())
-        max_y = int(ys.max())
-
-        boxes.append({
-            "instance_id": int(instance_id),
-            "bounds": (min_x, min_y, max_x, max_y),
-        })
-
-    return boxes
+    # Group foreground coordinates once instead of scanning the full image
+    # for every instance. Sparse IDs and disconnected parts remain supported.
+    ys, xs = np.nonzero(label_image)
+    if not len(xs):
+        return []
+    ids, groups = np.unique(label_image[ys, xs], return_inverse=True)
+    min_x = np.full(len(ids), label_image.shape[1], dtype=np.intp)
+    min_y = np.full(len(ids), label_image.shape[0], dtype=np.intp)
+    max_x = np.zeros(len(ids), dtype=np.intp)
+    max_y = np.zeros(len(ids), dtype=np.intp)
+    np.minimum.at(min_x, groups, xs)
+    np.minimum.at(min_y, groups, ys)
+    np.maximum.at(max_x, groups, xs)
+    np.maximum.at(max_y, groups, ys)
+    return [
+        {"instance_id": int(instance_id),
+         "bounds": (int(min_x[i]), int(min_y[i]), int(max_x[i]), int(max_y[i]))}
+        for i, instance_id in enumerate(ids)
+    ]
 
 def hex_to_bgr(hex_color: str) -> tuple[int, int, int]:
     hex_color = hex_color.lstrip("#")

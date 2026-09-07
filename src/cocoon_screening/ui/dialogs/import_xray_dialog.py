@@ -10,7 +10,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFileDialog,
 )
-from src.cocoon_screening.paths import default_raw_dir, default_images_dir
+from src.cocoon_screening.paths import (
+    default_raw_dir, default_images_dir, browse_start_directory, normalize_directory,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -83,7 +85,7 @@ class ImportXrayDialog(QDialog):
     def browse_source(self):
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select X-ray directory",  str(default_raw_dir())
+            "Select X-ray directory",  str(browse_start_directory(self.source_input.text(), default_raw_dir()))
         )
 
         if directory:
@@ -92,7 +94,7 @@ class ImportXrayDialog(QDialog):
     def browse_output(self):
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select output directory",  str(default_images_dir())
+            "Select output directory",  str(browse_start_directory(self.output_input.text(), default_images_dir()))
         )
 
         if directory:
@@ -103,11 +105,23 @@ class ImportXrayDialog(QDialog):
             QMessageBox.warning(self, "Input Error", "Please fill in all fields.")
             logger.warning("Import failed: Missing input fields.")
             return
-        self.accept()  # Close the dialog and indicate success
+        try:
+            source = normalize_directory(self.source_input.text())
+            output = normalize_directory(self.output_input.text())
+            if not source.is_dir():
+                raise ValueError("The source directory does not exist.")
+            if output.exists() and not output.is_dir():
+                raise ValueError("The output path is not a directory.")
+        except (OSError, ValueError, RuntimeError) as error:
+            QMessageBox.warning(self, "Input Error", str(error))
+            return
+        self.source_input.setText(str(source))
+        self.output_input.setText(str(output))
+        self.accept()
 
     def get_import_request(self) -> ImportXrayRequest:
         return ImportXrayRequest(
-            source_directory=Path(self.source_input.text()),
-            output_directory=Path(self.output_input.text()),
+            source_directory=normalize_directory(self.source_input.text()),
+            output_directory=normalize_directory(self.output_input.text()),
             batch_id=self.batch_id_input.text(),
         )

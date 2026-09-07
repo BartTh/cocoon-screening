@@ -13,6 +13,8 @@ class LabelSet:
         return self.names.index(name)
 
     def name_for(self, index: int) -> str:
+        if not 0 <= index < len(self.names):
+            raise ValueError(f"Invalid class index: {index}")
         return self.names[index]
 
     def color_for(self, name: str) -> str:
@@ -31,6 +33,19 @@ class LabelSet:
 def load_labels(path: Path) -> LabelSet:
     with open(path, "r", encoding="utf-8") as file:
         data = yaml.safe_load(file)
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid labels configuration: {path}")
+    names = data.get("LABEL_LIST")
+    colors = data.get("LABEL_COLOR")
+    if (not isinstance(names, list) or not names
+            or any(not isinstance(n, str) or not n for n in names)
+            or len(set(names)) != len(names) or not isinstance(colors, dict)):
+        raise ValueError("Labels need unique names and a color mapping.")
+    import re
+    if any(not re.fullmatch(r"#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?", str(colors.get(n, '')))
+           for n in names):
+        raise ValueError("Each label needs a valid hex color.")
 
     return LabelSet(
         names=data["LABEL_LIST"],

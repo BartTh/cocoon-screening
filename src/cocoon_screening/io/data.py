@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 import logging
 
-SUPPORTED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
+SUPPORTED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 SUPPORTED_LABEL_EXTENSIONS = {".tif", ".tiff", ".png", ".bmp"}
 logger = logging.getLogger(__name__)
 
@@ -10,7 +10,10 @@ def load_images_from_directory(images_directory):
     images = {}
 
     for image_path in sorted(Path(images_directory).iterdir()):
-        if image_path.is_file() and image_path.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS:
+        if (not image_path.name.startswith(".") and image_path.is_file()
+                and image_path.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS):
+            if image_path.stem in images:
+                raise ValueError(f"Multiple images have ID {image_path.stem}")
             images[image_path.stem] = image_path
 
     return images
@@ -24,7 +27,10 @@ def load_labels_from_directory(labels_directory):
         return labels
 
     for label_path in sorted(labels_directory.iterdir()):
-        if label_path.is_file() and label_path.suffix.lower() in SUPPORTED_LABEL_EXTENSIONS:
+        if (not label_path.name.startswith(".") and label_path.is_file()
+                and label_path.suffix.lower() in SUPPORTED_LABEL_EXTENSIONS):
+            if label_path.stem in labels:
+                raise ValueError(f"Multiple label maps have ID {label_path.stem}")
             labels[label_path.stem] = label_path
 
     return labels

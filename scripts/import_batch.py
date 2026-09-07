@@ -18,7 +18,7 @@ def main():
 
     args = parser.parse_args()
 
-    import_batch(
+    result = import_batch(
         batch_directory=Path(args.batches_directory) / args.batch_id,
         output_directory=Path(args.output_directory),
         image_registry_path=Path(args.output_directory).parent / "image_registry.csv",
@@ -26,7 +26,9 @@ def main():
         output_format=args.output_format
     )
 
-    logger.info(f"Batch {args.batch_id} successfully imported to {args.output_directory}!")
+    print(f"Imported: {result.imported}; duplicates: {result.skipped_duplicates}; failed: {result.failed}")
+    if result.failed or not result.discovered:
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     setup_logging(user_log_path(), log_level=logging.INFO)
@@ -35,4 +37,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.exception("An error occurred during batch import: %s", e)
         raise SystemExit(1)
-# python -m  scripts.import_batch --batch-id batch_0001 
+# python -m  scripts.import_batch --batch-id batch_0001
