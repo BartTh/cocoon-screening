@@ -49,7 +49,7 @@ jobs:
             --window-size 600 300 \
             --hide-extension "Cocoon Annotation Tool.app" \
             --app-drop-link 425 120 \
-            "dist/Cocoon Annotation Tool.dmg" \
+            "dist/CocoonAnnotationTool.dmg" \
             "dist/dmg/" || true
 
       - name: Upload DMG
