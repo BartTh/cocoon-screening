@@ -43,33 +43,20 @@ jobs:
 
       - name: Build the Mac app
         run: |
-          pyinstaller --windowed --name="Cocoon Annotation Tool" \
-            --add-data="configs:configs" \
-            --add-data="version.txt:." \
-            --add-data="models/bee_cocoon_stardist/config.json:models/bee_cocoon_stardist" \
-            --add-data="models/bee_cocoon_stardist/weights_best.h5:models/bee_cocoon_stardist" \
-            main.py
+          # CocoonAnnotationTool.spec carries the data files, the exclude list and the
+          # version in Info.plist, so nothing has to be patched into the bundle afterwards.
+          pyinstaller --noconfirm CocoonAnnotationTool.spec
 
-      - name: Stamp the version into the app bundle
+      - name: Check the bundle
         run: |
-          # So Finder's Get Info and the About panel show the build, not 0.0.0.
-          # Apple wants digits here, so a leading "v" is dropped; a commit SHA is
-          # passed through as-is, which Finder displays without complaint.
-          PLIST="dist/Cocoon Annotation Tool.app/Contents/Info.plist"
-          VERSION="${{ steps.version.outputs.version }}"
-          VERSION="${VERSION#v}"
-          for KEY in CFBundleShortVersionString CFBundleVersion; do
-            /usr/libexec/PlistBuddy -c "Set :$KEY $VERSION" "$PLIST" 2>/dev/null \
-              || /usr/libexec/PlistBuddy -c "Add :$KEY string $VERSION" "$PLIST"
-          done
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
-
-          # PyInstaller ad-hoc signs the bundle and that signature seals Info.plist, so
-          # editing the plist invalidates it and macOS refuses to launch the app with
-          # "the application is damaged". Re-sign after stamping.
-          codesign --force --deep --sign - "dist/Cocoon Annotation Tool.app"
-          codesign --verify --deep --strict "dist/Cocoon Annotation Tool.app"
-          echo "signature valid after stamping"
+          APP="dist/Cocoon Annotation Tool.app"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
+          # The spec sets the version before PyInstaller signs, so the ad-hoc signature
+          # still matches. Verify it: an invalid signature makes macOS report the app as
+          # "damaged", which is how v0.3.0 shipped broken.
+          codesign --verify --deep --strict "$APP" && echo "signature valid"
+          echo "bundle size: $(du -sh "$APP" | cut -f1)"
+          du -sh "$APP"/Contents/Frameworks/* 2>/dev/null | sort -rh | head -15
 
       - name: Install brew
         run: |
@@ -93,6 +80,11 @@ jobs:
             --app-drop-link 425 120 \
             "dist/CocoonAnnotationTool-${{ steps.version.outputs.version }}.dmg" \
             "dist/dmg/" || true
+
+      - name: Report sizes
+        run: |
+          echo "app:  $(du -sh "dist/Cocoon Annotation Tool.app" | cut -f1)"
+          echo "dmg:  $(du -sh dist/CocoonAnnotationTool-${{ steps.version.outputs.version }}.dmg | cut -f1)"
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
