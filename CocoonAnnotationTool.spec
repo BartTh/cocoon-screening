@@ -19,10 +19,12 @@ VERSION = VERSION_FILE.read_text(encoding="utf-8").strip() if VERSION_FILE.exist
 EXCLUDES = [
     # Plotting and notebooks: nothing in the app draws a chart.
     "matplotlib", "IPython", "notebook", "jupyter", "jupyter_core", "nbformat",
-    # TensorFlow: StarDist runs through onnxruntime. The Keras path in stardist.py is for
-    # checkouts only, so keep TF out even if a stray install pulls it into the environment.
+    # StarDist runs through onnxruntime, with its post-processing ported to
+    # processing/stardist_post.py. None of these are app dependencies; keep them out even
+    # if a stray install (e.g. for the port tests) puts them in the environment.
     "tensorflow", "tensorboard", "tensorboard_data_server", "tensorflow_estimator",
     "keras", "h5py", "google.protobuf.internal._api_implementation",
+    "stardist", "csbdeep", "skimage", "scipy", "numba", "llvmlite", "tifffile",
     # Test and build tooling that sneaks in through dependencies.
     "pytest", "_pytest", "setuptools._distutils", "pip", "sphinx",
     # Other GUI toolkits: the app is PySide6 only.
