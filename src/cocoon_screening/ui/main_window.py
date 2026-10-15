@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._job_callback = None
         self._shortcut_states = []
+        self.show_overlay = True
         self.init_ui()
         self._worker_thread = QThread(self)
         self._worker = Worker()
@@ -518,6 +519,10 @@ class MainWindow(QMainWindow):
         prev_image_shortcut = QShortcut(QKeySequence("Ctrl+Left"), self)
         prev_image_shortcut.activated.connect(self.prev_image)
 
+        # Overlay on/off
+        toggle_overlay_shortcut = QShortcut(QKeySequence("Space"), self)
+        toggle_overlay_shortcut.activated.connect(self.toggle_overlay)
+
         # Label selection shortcuts
         for i in range(min(len(self.label_set), 9)):
             label_shortcut = QShortcut(QKeySequence(f"{i}"), self)
@@ -835,12 +840,33 @@ class MainWindow(QMainWindow):
         return prepare_annotation_data(image_path, label_paths,
                                        self.stardist_predictor, self.label_set)
 
-    def annotation_crop_pixmap(self, crop):
-        overlay = draw_instance_overlay(crop["image"], crop["mask"],
-                                        color=(0, 255, 182), alpha=0.35)
-        pixmap = array_to_pixmap(overlay)
+    def annotation_crop_pixmap(self, crop, show_overlay=None):
+        if show_overlay is None:
+            show_overlay = self.show_overlay
+        if show_overlay:
+            image = draw_instance_overlay(crop["image"], crop["mask"],
+                                          color=(0, 255, 182), alpha=0.35)
+        else:
+            # Raw cocoon: no mask tint and no contour, so a faint density difference
+            # is not hidden by the segmentation outline.
+            image = crop["image"]
+        pixmap = array_to_pixmap(image)
         return pixmap.scaled(pixmap.width() * 2, pixmap.height() * 2,
                              Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+    def toggle_overlay(self):
+        """Space: switch the segmentation overlay on and off for the cocoon on screen."""
+        if getattr(self, "_busy", False):
+            return
+        self.show_overlay = not self.show_overlay
+        self.refresh_cocoon_pixmap()
+
+    def refresh_cocoon_pixmap(self):
+        """Redraw the current cocoon only; selection and saved labels are untouched."""
+        crop = getattr(self, "current_crops", {}).get(getattr(self, "current_cocoon_id", None))
+        if crop is None:
+            return
+        self.image_display.setPixmap(self.annotation_crop_pixmap(crop))
 
     def activate_annotation_image(self, image_path, prepared, selected_id=None):
         crops = prepared["crops"]
@@ -848,7 +874,7 @@ class MainWindow(QMainWindow):
             selected_id = next(iter(crops), None)
         pixmap = None
         if selected_id is not None:
-            pixmap = prepared["pixmaps"].get(selected_id)
+            pixmap = prepared["pixmaps"].get(selected_id) if self.show_overlay else None
             if pixmap is None:
                 pixmap = self.annotation_crop_pixmap(crops[selected_id])
         self.current_image = image_path
@@ -1850,7 +1876,7 @@ class MainWindow(QMainWindow):
     def create_annotation_shortcut_bar(self):
         shortcuts = [
             ((["\u2190"], "", "Previous cocoon"), (["Ctrl", "\u2190"], "+", "Previous image")),
-            ((["0", "7"], "-", "Choose label"), None),
+            ((["0", "7"], "-", "Choose label"), (["Space"], "", "Show/hide overlay")),
             ((["\u2192"], "", "Next cocoon"), (["Ctrl", "\u2192"], "+", "Next image")),
         ]
 
