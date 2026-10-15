@@ -64,6 +64,13 @@ jobs:
           done
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
 
+          # PyInstaller ad-hoc signs the bundle and that signature seals Info.plist, so
+          # editing the plist invalidates it and macOS refuses to launch the app with
+          # "the application is damaged". Re-sign after stamping.
+          codesign --force --deep --sign - "dist/Cocoon Annotation Tool.app"
+          codesign --verify --deep --strict "dist/Cocoon Annotation Tool.app"
+          echo "signature valid after stamping"
+
       - name: Install brew
         run: |
           brew install create-dmg
