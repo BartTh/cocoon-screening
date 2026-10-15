@@ -1,4 +1,6 @@
-LABEL_LIST: ["Prepupae", "Parasites", "Empty", "Machine Damaged", "Chalkbrood", "Pollen Balls", "Other (Unsure)", "Exclude"]
+# Order is an API: interim/labels/*.csv stores the INDEX, not the name.
+# Append new classes at the end; never insert or reorder, or every existing label shifts.
+LABEL_LIST: ["Prepupae", "Parasites", "Empty", "Machine Damaged", "Chalkbrood", "Pollen Balls", "Other (Unsure)", "Exclude", "Prepupa + Pollen"]
 
 LABEL_COLOR: {
     "Prepupae": "#3B9638", # Green #0
@@ -8,5 +10,6 @@ LABEL_COLOR: {
     "Chalkbrood": "#FE6100", # Orange #4
     "Pollen Balls": "#FFB000", # Yellow #5
     "Other (Unsure)": "#0BA8CC", # Cyan #6
-    "Exclude": "#000000"  # Black #7
+    "Exclude": "#000000",  # Black #7
+    "Prepupa + Pollen": "#A0522D"  # Brown #8 - one cell holding both a prepupa and a pollen ball
 }
