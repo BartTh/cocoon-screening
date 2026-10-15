@@ -1,7 +1,13 @@
 name: Build macOS App
 
 on:
+  # Manual: Actions -> Build macOS App -> Run workflow, on any branch.
   workflow_dispatch:
+  # Automatic: every tag that starts with v, e.g. v0.2.0. Work in progress does not
+  # build; a tagged version always does, and the DMG is tied to that exact commit.
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -57,4 +63,4 @@ jobs:
         with:
           name: CocoonAnnotationTool
           path: dist/CocoonAnnotationTool.dmg
-          retention-days: 1
+          retention-days: 14
