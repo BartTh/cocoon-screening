@@ -18,6 +18,7 @@ from src.cocoon_screening.domain.review_item import ReviewItem, parse_review_fil
 from src.cocoon_screening.processing.stardist import StardistPredictor
 from src.cocoon_screening.io.data import get_batch_id, load_images_from_directory, load_labels_from_directory
 from src.cocoon_screening.paths import (
+    app_version,
     bundled_configs_dir, default_images_dir, default_review_dir,
     browse_start_directory, normalize_directory,
 )
@@ -73,7 +74,7 @@ class MainWindow(QMainWindow):
         self._worker_thread.start()
 
     def init_ui(self):
-        self.setWindowTitle("Cocoon Annotation Tool")
+        self.setWindowTitle(f"Cocoon Annotation Tool {app_version()}")
 
         ## Main layout
         container = QWidget()

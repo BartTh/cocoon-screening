@@ -29,6 +29,20 @@ def user_log_path() -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path / f"app_{datetime.now():%Y%m%d_%H%M%S}.log"
 
+def app_version() -> str:
+    """Version stamped into the bundle at build time.
+
+    The build workflow writes version.txt (the git tag for a tagged build, otherwise the
+    short commit SHA) and PyInstaller bundles it, so a DMG can always be traced back to
+    the commit it came from. Returns "dev" when running from a checkout.
+    """
+    try:
+        version = bundled_resource_path("version.txt").read_text(encoding="utf-8").strip()
+    except OSError:
+        return "dev"
+    return version or "dev"
+
+
 def bundled_models_dir() -> Path:
     return bundled_resource_path("models")
 

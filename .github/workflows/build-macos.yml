@@ -22,6 +22,20 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Determine version
+        id: version
+        run: |
+          # A tagged build is named after the tag; anything else after its commit, so
+          # every DMG can be traced back to the exact source it was built from.
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="$GITHUB_REF_NAME"
+          else
+            VERSION="$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          printf '%s' "$VERSION" > version.txt
+          echo "Building version $VERSION"
+
       - name: Install libraries
         run: |
           python -m pip install --upgrade pip
@@ -31,9 +45,24 @@ jobs:
         run: |
           pyinstaller --windowed --name="Cocoon Annotation Tool" \
             --add-data="configs:configs" \
+            --add-data="version.txt:." \
             --add-data="models/bee_cocoon_stardist/config.json:models/bee_cocoon_stardist" \
             --add-data="models/bee_cocoon_stardist/weights_best.h5:models/bee_cocoon_stardist" \
             main.py
+
+      - name: Stamp the version into the app bundle
+        run: |
+          # So Finder's Get Info and the About panel show the build, not 0.0.0.
+          # Apple wants digits here, so a leading "v" is dropped; a commit SHA is
+          # passed through as-is, which Finder displays without complaint.
+          PLIST="dist/Cocoon Annotation Tool.app/Contents/Info.plist"
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${VERSION#v}"
+          for KEY in CFBundleShortVersionString CFBundleVersion; do
+            /usr/libexec/PlistBuddy -c "Set :$KEY $VERSION" "$PLIST" 2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Add :$KEY string $VERSION" "$PLIST"
+          done
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
 
       - name: Install brew
         run: |
@@ -47,7 +76,7 @@ jobs:
 
       - name: Create macOS Disk Image
         run: |
-          rm -f "dist/Cocoon Annotation Tool.dmg"
+          rm -f "dist/CocoonAnnotationTool-${{ steps.version.outputs.version }}.dmg"
 
           create-dmg \
             --volname "Cocoon Annotation Tool" \
@@ -55,12 +84,12 @@ jobs:
             --window-size 600 300 \
             --hide-extension "Cocoon Annotation Tool.app" \
             --app-drop-link 425 120 \
-            "dist/CocoonAnnotationTool.dmg" \
+            "dist/CocoonAnnotationTool-${{ steps.version.outputs.version }}.dmg" \
             "dist/dmg/" || true
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: CocoonAnnotationTool
-          path: dist/CocoonAnnotationTool.dmg
+          name: CocoonAnnotationTool-${{ steps.version.outputs.version }}
+          path: dist/CocoonAnnotationTool-${{ steps.version.outputs.version }}.dmg
           retention-days: 14

@@ -62,3 +62,6 @@ venv.bak/
 
 # VS Code
 .vscode/
+
+# written by the build workflow
+version.txt
