@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
 )
 from src.cocoon_screening.paths import (
+    remembered_directory, remember_directory,
     default_raw_dir, default_images_dir, browse_start_directory, normalize_directory,
 )
 import logging
@@ -85,19 +86,21 @@ class ImportXrayDialog(QDialog):
     def browse_source(self):
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select X-ray directory",  str(browse_start_directory(self.source_input.text(), default_raw_dir()))
+            "Select X-ray directory",  str(browse_start_directory(self.source_input.text(), remembered_directory("import_source"), default_raw_dir()))
         )
 
         if directory:
+            remember_directory("import_source", directory)
             self.source_input.setText(directory)
 
     def browse_output(self):
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select output directory",  str(browse_start_directory(self.output_input.text(), default_images_dir()))
+            "Select output directory",  str(browse_start_directory(self.output_input.text(), remembered_directory("import_output"), default_images_dir()))
         )
 
         if directory:
+            remember_directory("import_output", directory)
             self.output_input.setText(directory)
 
     def start_import(self):

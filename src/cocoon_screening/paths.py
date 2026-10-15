@@ -1,9 +1,13 @@
 from pathlib import Path
+import json
+import logging
 import os
 import sys
 from datetime import datetime
 
 APP_NAME = "CocoonScreening"
+
+logger = logging.getLogger(__name__)
 
 def bundled_resource_path(relative_path: str | Path) -> Path:
     if hasattr(sys, "_MEIPASS"):
@@ -58,6 +62,44 @@ def app_install_dir() -> Path:
                     return parent.parent
         return executable.parent
     return Path(__file__).resolve().parents[2]
+
+
+def ui_state_path() -> Path:
+    """Small file remembering what the user last chose, next to the logs."""
+    return user_data_dir() / "ui_state.json"
+
+
+def remembered_directory(key: str) -> Path | None:
+    """Folder last used for this purpose, or None.
+
+    Browsing used to start from the home folder on every launch, because the fallback
+    chain ended at app_install_dir()/data, which does not exist beside an installed .app.
+    """
+    try:
+        state = json.loads(ui_state_path().read_text(encoding="utf-8"))
+        value = state.get("directories", {}).get(key)
+    except (OSError, ValueError):
+        return None
+    if not value:
+        return None
+    path = Path(value)
+    return path if path.is_dir() else None
+
+
+def remember_directory(key: str, directory: str | Path) -> None:
+    """Record a chosen folder. Never let a cache failure break the UI."""
+    try:
+        path = Path(directory)
+        if not path.is_dir():
+            path = path.parent
+        try:
+            state = json.loads(ui_state_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            state = {}
+        state.setdefault("directories", {})[key] = str(path.resolve())
+        ui_state_path().write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except OSError as error:
+        logger.info("Could not remember the %s directory: %s", key, error)
 
 
 def normalize_directory(value: str | Path) -> Path:

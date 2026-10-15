@@ -18,7 +18,7 @@ from src.cocoon_screening.domain.review_item import ReviewItem, parse_review_fil
 from src.cocoon_screening.processing.stardist import StardistPredictor
 from src.cocoon_screening.io.data import get_batch_id, load_images_from_directory, load_labels_from_directory
 from src.cocoon_screening.paths import (
-    app_version,
+    app_version, remembered_directory, remember_directory,
     bundled_configs_dir, default_images_dir, default_review_dir,
     browse_start_directory, normalize_directory,
 )
@@ -1153,18 +1153,20 @@ class MainWindow(QMainWindow):
             title = "Select Review Directory"
             start = browse_start_directory(
                 self.review_directory_input.text(), self.loaded_review_directory,
-                default_review_dir(),
+                remembered_directory("review"), default_review_dir(),
             )
         else:
             title = "Select Image Directory"
             start = browse_start_directory(
                 self.annotation_directory_input.text(), self.loaded_annotation_directory,
-                default_images_dir(),
+                remembered_directory("annotation"), default_images_dir(),
             )
         directory = QFileDialog.getExistingDirectory(self, title, str(start))
         if directory and self.mode == AppMode.ANNOTATION:
+            remember_directory("annotation", directory)
             self.load_directory(directory)
         elif directory and self.mode == AppMode.REVIEW:
+            remember_directory("review", directory)
             self.load_review_directory(directory)
 
     def load_directory(self, directory):
