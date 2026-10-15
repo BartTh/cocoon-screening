@@ -24,7 +24,7 @@ EXCLUDES = [
     "tensorflow", "tensorboard", "tensorboard_data_server", "tensorflow_estimator",
     "keras", "h5py", "google.protobuf.internal._api_implementation",
     # Test and build tooling that sneaks in through dependencies.
-    "pytest", "_pytest", "setuptools._distutils", "pip", "wheel", "sphinx",
+    "pytest", "_pytest", "setuptools._distutils", "pip", "sphinx",
     # Other GUI toolkits: the app is PySide6 only.
     "tkinter", "PyQt5", "PyQt6", "PIL.ImageTk", "PIL.ImageQt",
     # Qt modules this app never touches. QtWebEngine alone is well over 100 MB.
