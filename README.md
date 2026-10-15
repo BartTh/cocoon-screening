@@ -11,7 +11,7 @@ cocoon-screening/
   configs/
     labels.yaml                   # Label names and colors used in the GUI
   models/
-    bee_cocoon_stardist/          # Custom StarDist model weights
+    bee_cocoon_stardist/          # Custom StarDist model: model.onnx (used by the app), Keras weights (for re-export)
   data/
     raw/                          # Raw X-ray batch for testing
   scripts/
@@ -45,7 +45,7 @@ pip install -r requirements.txt
 The GUI can be packaged as a single Windows executable with PyInstaller:
 
 ```powershell
-pyinstaller --windowed --onefile --name "CocoonAnnotationTool" --add-data "configs;configs" --add-data "models\bee_cocoon_stardist\config.json;models\bee_cocoon_stardist" --add-data "models\bee_cocoon_stardist\weights_best.h5;models\bee_cocoon_stardist" main.py
+pyinstaller --windowed --onefile --name "CocoonAnnotationTool" --add-data "configs;configs" --add-data "models\bee_cocoon_stardist\config.json;models\bee_cocoon_stardist" --add-data "models\bee_cocoon_stardist\model.onnx;models\bee_cocoon_stardist" main.py
 ```
 
 The bundled executable is written to:

@@ -9,15 +9,15 @@ Why this exists twice over:
    device (see 00_core/orin_nano_ota_runbook.md, sections 5 and 16.5). The same file
    serves both, so the edge path stops being a separate problem.
 
-Run it anywhere TensorFlow is installed - including the build runner, which already
-installs requirements.txt:
+Run it anywhere TensorFlow is installed:
 
-    pip install tf2onnx onnx
+    pip install tensorflow==2.10.1 tf2onnx onnx
     python tools/export_stardist_onnx.py
 
 Writes models/bee_cocoon_stardist/model.onnx and prints the input/output names the
-runtime needs. The Keras weights stay in place: nothing reads the ONNX file until the
-predictor is switched over.
+runtime needs. The app reads only the ONNX file, so re-run this after any retraining and
+update model.onnx.sha256-of-weights - a stale export silently keeps the old network.
+TensorFlow is no longer in requirements.txt; install tensorflow==2.10.1 to run this.
 """
 
 import argparse

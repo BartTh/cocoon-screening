@@ -19,10 +19,10 @@ VERSION = VERSION_FILE.read_text(encoding="utf-8").strip() if VERSION_FILE.exist
 EXCLUDES = [
     # Plotting and notebooks: nothing in the app draws a chart.
     "matplotlib", "IPython", "notebook", "jupyter", "jupyter_core", "nbformat",
-    # TensorFlow's training/monitoring extras; inference needs none of them.
-    "tensorboard", "tensorboard_data_server", "tensorflow.python.distribute",
-    "tensorflow.python.debug", "tensorflow.python.profiler", "tensorflow_estimator",
-    "keras.api._v1", "google.protobuf.internal._api_implementation",
+    # TensorFlow: StarDist runs through onnxruntime. The Keras path in stardist.py is for
+    # checkouts only, so keep TF out even if a stray install pulls it into the environment.
+    "tensorflow", "tensorboard", "tensorboard_data_server", "tensorflow_estimator",
+    "keras", "h5py", "google.protobuf.internal._api_implementation",
     # Test and build tooling that sneaks in through dependencies.
     "pytest", "_pytest", "setuptools._distutils", "pip", "wheel", "sphinx",
     # Other GUI toolkits: the app is PySide6 only.
@@ -44,7 +44,7 @@ EXCLUDES = [
 datas = [
     ("configs", "configs"),
     ("models/bee_cocoon_stardist/config.json", "models/bee_cocoon_stardist"),
-    ("models/bee_cocoon_stardist/weights_best.h5", "models/bee_cocoon_stardist"),
+    ("models/bee_cocoon_stardist/model.onnx", "models/bee_cocoon_stardist"),
 ]
 if VERSION_FILE.exists():
     datas.append(("version.txt", "."))

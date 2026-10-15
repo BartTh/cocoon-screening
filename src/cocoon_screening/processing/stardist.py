@@ -2,15 +2,46 @@ from pathlib import Path
 import cv2
 import numpy as np
 import logging
+import math
+import os
 from src.cocoon_screening.paths import bundled_models_dir
 from src.cocoon_screening.io.atomic import image_bytes, write_bytes
 
 logger = logging.getLogger(__name__)
 
+# The network has a U-Net of depth 3 on a grid of 2, so every input axis must be a
+# multiple of 2**3 * 2 = 16; otherwise the skip connections fail to concatenate.
+DIVISOR = 16
+GRID = (2, 2)
+# StarDist's defaults. The model folder has no thresholds.json, so nothing else supplies them.
+PROB_THRESH = 0.5
+NMS_THRESH = 0.4
+
+# Set to "tensorflow" to use the original Keras path (needs TensorFlow installed; checkouts only).
+BACKEND_ENV = "COCOON_STARDIST_BACKEND"
+
+
 class StardistPredictor:
     def __init__(self, use_custom_model: bool = True):
         self.use_custom_model = use_custom_model
         self._model = None
+        self._session = None
+
+    def backend(self) -> str:
+        if not self.use_custom_model:
+            return "tensorflow"  # the pretrained fallback exists only as a Keras model
+        return os.environ.get(BACKEND_ENV, "onnx").strip().lower()
+
+    def session(self):
+        if self._session is None:
+            import onnxruntime as ort
+            path = bundled_models_dir() / "bee_cocoon_stardist" / "model.onnx"
+            options = ort.SessionOptions()
+            # A whole tray runs untiled; the arena would keep ~400 MB more at peak and hold
+            # on to it between trays. Costs well under a second per tray.
+            options.enable_cpu_mem_arena = False
+            self._session = ort.InferenceSession(str(path), options, providers=["CPUExecutionProvider"])
+        return self._session
 
     def model(self):
         if self._model is None:
@@ -41,6 +72,8 @@ class StardistPredictor:
 
         image = image.astype(np.float32)
         image_normalized = normalize(image, 1, 99.8)
+        if self.backend() == "onnx":
+            return self._predict_onnx(image_normalized)
         labels, details = self.model().predict_instances(
             image_normalized,
             n_tiles=(4, 4),
@@ -48,6 +81,27 @@ class StardistPredictor:
             verbose=False
         )
 
+        return labels, details
+
+    def _predict_onnx(self, image: np.ndarray):
+        from stardist.nms import non_maximum_suppression
+        from stardist.geometry import dist_to_coord, polygons_to_label
+
+        height, width = image.shape
+        pad = [(0, math.ceil(n / DIVISOR) * DIVISOR - n) for n in (height, width)]
+        padded = np.pad(image, pad, mode="reflect")[np.newaxis, ..., np.newaxis]
+
+        session = self.session()
+        prob, dist = session.run(None, {session.get_inputs()[0].name: padded.astype(np.float32)})
+        # Outputs are at grid resolution; crop away what the padding added.
+        rows, cols = (math.ceil(n / g) for n, g in zip((height, width), GRID))
+        prob = prob[0, :rows, :cols, 0]
+        dist = dist[0, :rows, :cols, :]
+
+        points, probi, disti = non_maximum_suppression(
+            dist, prob, grid=GRID, prob_thresh=PROB_THRESH, nms_thresh=NMS_THRESH)
+        labels = polygons_to_label(disti, points, prob=probi, shape=(height, width))
+        details = dict(coord=dist_to_coord(disti, points), points=points, prob=probi)
         return labels, details
 
     def create_label_map(
