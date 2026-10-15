@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):
 
         ## Variables
         self.mode = AppMode.ANNOTATION
-        self.stardist_predictor = StardistPredictor(use_custom_model=True)
+        self.stardist_predictor = StardistPredictor()
         labels_path = bundled_configs_dir() / "labels.yaml"
         self.label_set = load_labels(labels_path)
         self.images_path_dict = {}

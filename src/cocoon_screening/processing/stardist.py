@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import logging
 import math
-import os
 from src.cocoon_screening.paths import bundled_models_dir
 from src.cocoon_screening.io.atomic import image_bytes, write_bytes
 
@@ -17,20 +16,16 @@ GRID = (2, 2)
 PROB_THRESH = 0.5
 NMS_THRESH = 0.4
 
-# Set to "tensorflow" to use the original Keras path (needs TensorFlow installed; checkouts only).
-BACKEND_ENV = "COCOON_STARDIST_BACKEND"
-
 
 class StardistPredictor:
-    def __init__(self, use_custom_model: bool = True):
-        self.use_custom_model = use_custom_model
-        self._model = None
-        self._session = None
+    """Runs the custom StarDist model through onnxruntime.
 
-    def backend(self) -> str:
-        if not self.use_custom_model:
-            return "tensorflow"  # the pretrained fallback exists only as a Keras model
-        return os.environ.get(BACKEND_ENV, "onnx").strip().lower()
+    model.onnx is exported from the Keras weights by tools/export_stardist_onnx.py, which
+    is the only place TensorFlow is still needed.
+    """
+
+    def __init__(self):
+        self._session = None
 
     def session(self):
         if self._session is None:
@@ -42,20 +37,6 @@ class StardistPredictor:
             options.enable_cpu_mem_arena = False
             self._session = ort.InferenceSession(str(path), options, providers=["CPUExecutionProvider"])
         return self._session
-
-    def model(self):
-        if self._model is None:
-            from stardist.models import StarDist2D
-            if self.use_custom_model:
-                self._model = StarDist2D(
-                    None,
-                    name="bee_cocoon_stardist",
-                    basedir=str(bundled_models_dir()),
-                )
-            else:
-                self._model = StarDist2D.from_pretrained("2D_versatile_fluo")
-
-        return self._model
 
     def predict(self, image_path: Path):
         from csbdeep.utils import normalize
@@ -71,19 +52,9 @@ class StardistPredictor:
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         image = image.astype(np.float32)
-        image_normalized = normalize(image, 1, 99.8)
-        if self.backend() == "onnx":
-            return self._predict_onnx(image_normalized)
-        labels, details = self.model().predict_instances(
-            image_normalized,
-            n_tiles=(4, 4),
-            show_tile_progress=False,
-            verbose=False
-        )
+        return self._segment(normalize(image, 1, 99.8))
 
-        return labels, details
-
-    def _predict_onnx(self, image: np.ndarray):
+    def _segment(self, image: np.ndarray):
         from stardist.nms import non_maximum_suppression
         from stardist.geometry import dist_to_coord, polygons_to_label
 
