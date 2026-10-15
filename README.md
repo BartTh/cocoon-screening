@@ -30,7 +30,7 @@ cocoon-screening/
 Create an environment:
 
 ```powershell
-conda create -n cocoons python=3.10.20
+conda create -n cocoons python=3.13
 conda activate cocoons
 ```
 
