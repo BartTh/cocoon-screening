@@ -60,6 +60,8 @@ class MainWindow(QMainWindow):
         self._job_callback = None
         self._shortcut_states = []
         self.show_overlay = True
+        self.show_review_overlay = False
+        self._review_label_maps = {}
         self.init_ui()
         self._worker_thread = QThread(self)
         self._worker = Worker()
@@ -858,8 +860,56 @@ class MainWindow(QMainWindow):
         """Space: switch the segmentation overlay on and off for the cocoon on screen."""
         if getattr(self, "_busy", False):
             return
+        if getattr(self, "mode", None) == AppMode.REVIEW:
+            self.show_review_overlay = not self.show_review_overlay
+            self.refresh_review_pixmap()
+            return
         self.show_overlay = not self.show_overlay
         self.refresh_cocoon_pixmap()
+
+    def review_instance_mask(self, item, shape):
+        """Mask of one review crop, rebuilt from the label map beside the review folder.
+
+        Review crops are saved raw (save_current_cocoon_for_review stores crop["image"]),
+        so the overlay has to be reconstructed. Returns None when the label map is not
+        reachable - a review folder can be opened on its own - and the crop then stays raw.
+        """
+        label_path = item.crop_path.parent.parent / "labels" / f"{item.image_id}.png"
+        if not label_path.exists():
+            return None
+        label_map = self._review_label_maps.get(item.image_id)
+        if label_map is None:
+            label_map = cv2.imread(str(label_path), cv2.IMREAD_UNCHANGED)
+            if label_map is None:
+                return None
+            self._review_label_maps[item.image_id] = label_map
+        x1, y1, x2, y2 = item.bounds                      # inclusive, as crop_instances writes them
+        if y2 >= label_map.shape[0] or x2 >= label_map.shape[1]:
+            return None
+        mask = label_map[y1:y2 + 1, x1:x2 + 1] == item.instance_id
+        if not mask.any():
+            return None
+        height, width = shape[:2]                         # the saved crop is scaled 2x
+        return cv2.resize(mask.astype(np.uint8), (width, height),
+                          interpolation=cv2.INTER_NEAREST).astype(bool)
+
+    def review_crop_pixmap(self, item, crop):
+        if self.show_review_overlay:
+            mask = self.review_instance_mask(item, crop.shape)
+            if mask is not None:
+                crop = draw_instance_overlay(crop, mask, color=(0, 255, 182), alpha=0.35)
+            else:
+                logger.info("No label map for %s; showing the review crop without overlay",
+                            item.image_id)
+        return array_to_pixmap(crop)
+
+    def refresh_review_pixmap(self):
+        """Redraw the review crop on screen; the saved decision is untouched."""
+        item = getattr(self, "current_review_item", None)
+        crop = getattr(self, "current_review_crop", None)
+        if item is None or crop is None:
+            return
+        self.image_display.setPixmap(self.review_crop_pixmap(item, crop))
 
     def refresh_cocoon_pixmap(self):
         """Redraw the current cocoon only; selection and saved labels are untouched."""
@@ -1370,6 +1420,7 @@ class MainWindow(QMainWindow):
 
 
     def _load_review_directory(self, directory):
+        self._review_label_maps.clear()
         directory = normalize_directory(directory)
         items = self.scan_review_items(directory)
         table = self.read_review_table(directory)
@@ -1463,11 +1514,10 @@ class MainWindow(QMainWindow):
             if self.review_row_is_complete(row)
             else None
         )
-        pixmap = array_to_pixmap(crop)
-
         self.current_review_index = index
         self.current_review_item = item
-        self.image_display.setPixmap(pixmap)
+        self.current_review_crop = crop
+        self.image_display.setPixmap(self.review_crop_pixmap(item, crop))
         self.set_review_selection(selection)
 
         dropdown = self.review_item_counter_dropdown
@@ -1885,7 +1935,7 @@ class MainWindow(QMainWindow):
     def create_review_shortcut_bar(self):
         shortcuts = [
             ((["\u2190"], "", "Previous review item"), None),
-            ((["0", "7"], "-", "Choose label"), None),
+            ((["0", "7"], "-", "Choose label"), (["Space"], "", "Show/hide overlay")),
             ((["\u2192"], "", "Next review item"), None),
         ]
 
