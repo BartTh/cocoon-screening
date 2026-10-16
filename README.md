@@ -107,6 +107,8 @@ There are two modes in the application: Annotation and Review Mode. The former i
 
 4. Choose a class using the label panel or keyboard shortcut. The decision updates the original classification CSV.
 
+   Any folder of review crops works, not only `for_review`. The original image, label map and classification CSV are found in the nearest folder up to four levels above the review folder that contains both `images/` and `labels/`. So review folders can be grouped, e.g. `interim/review/<name>` or `interim/review/done/<date>_<name>`, and a self-contained round with its own `images/` and `labels/` keeps writing to its own copies.
+
 5. After the decision is saved, the application automatically moves to the next review item. The Left and Right arrow keys or the dropdown menu can be used to move between review items without assigning a class.
 
 6. Review progress and history of past review sessions are stored in:

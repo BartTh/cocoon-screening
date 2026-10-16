@@ -20,7 +20,7 @@ from src.cocoon_screening.io.data import get_batch_id, load_images_from_director
 from src.cocoon_screening.paths import (
     app_version, remembered_directory, remember_directory,
     bundled_configs_dir, default_images_dir, default_review_dir,
-    browse_start_directory, normalize_directory,
+    browse_start_directory, normalize_directory, review_dataset_root,
 )
 from src.cocoon_screening.ui.utils import array_to_pixmap
 from src.cocoon_screening.processing.image_processing import draw_instance_overlay, render_completed_image_overlay, crop_instances
@@ -352,7 +352,7 @@ class MainWindow(QMainWindow):
         self.clear_state()
 
         if review_dir is not None:
-            images_dir = review_dir.parent / "images"
+            images_dir = review_dataset_root(review_dir) / "images"
             if images_dir.exists():
                 if self.confirm_relative_directory(
                     "Open Annotation Directory",
@@ -875,7 +875,7 @@ class MainWindow(QMainWindow):
         so the overlay has to be reconstructed. Returns None when the label map is not
         reachable - a review folder can be opened on its own - and the crop then stays raw.
         """
-        label_path = item.crop_path.parent.parent / "labels" / f"{item.image_id}.png"
+        label_path = review_dataset_root(item.crop_path.parent) / "labels" / f"{item.image_id}.png"
         if not label_path.exists():
             return None
         label_map = self._review_label_maps.get(item.image_id)
@@ -1792,7 +1792,7 @@ class MainWindow(QMainWindow):
             self.review_table = updated
 
     def get_review_image_cache(self, image_id):
-        root = self.loaded_review_directory.parent
+        root = review_dataset_root(self.loaded_review_directory)
         cache_key = (root, image_id)
         if self.review_image_cache is not None:
             if self.review_image_cache["key"] == cache_key:

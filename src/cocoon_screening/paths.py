@@ -139,3 +139,20 @@ def default_raw_dir() -> Path:
 
 def default_review_dir() -> Path:
     return browse_start_directory(app_install_dir() / "data" / "for_review")
+
+
+def review_dataset_root(review_dir: str | Path) -> Path:
+    """The folder holding images/ and labels/ that a review folder belongs to.
+
+    Review mode reads the original image and label map, and writes decisions, there. It
+    used to be exactly review_dir.parent, which forced every review folder to sit directly
+    beside images/ and labels/. Now the nearest such folder up to four levels above counts,
+    so review folders can be grouped (interim/review/<name>, interim/review/done/<name>).
+    Nearest wins: a self-contained round with its own images/ and labels/ keeps using them.
+    Falls back to review_dir.parent, the old behaviour, when none is found.
+    """
+    review_dir = Path(review_dir)
+    for candidate in [review_dir.parent, *review_dir.parent.parents][:4]:
+        if (candidate / "images").is_dir() and (candidate / "labels").is_dir():
+            return candidate
+    return review_dir.parent
