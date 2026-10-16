@@ -526,8 +526,8 @@ class MainWindow(QMainWindow):
         toggle_overlay_shortcut = QShortcut(QKeySequence("Space"), self)
         toggle_overlay_shortcut.activated.connect(self.toggle_overlay)
 
-        # Label selection shortcuts
-        for i in range(min(len(self.label_set), 9)):
+        # Label selection shortcuts: the digit keys 0-9, one per class index
+        for i in range(min(len(self.label_set), 10)):
             label_shortcut = QShortcut(QKeySequence(f"{i}"), self)
             label_shortcut.activated.connect(lambda idx=i: self.select_label_by_index(idx))
 
