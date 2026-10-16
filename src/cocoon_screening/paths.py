@@ -138,7 +138,22 @@ def default_raw_dir() -> Path:
 
 
 def default_review_dir() -> Path:
-    return browse_start_directory(app_install_dir() / "data" / "for_review")
+    return browse_start_directory(app_install_dir() / "data" / "review",
+                                  app_install_dir() / "data" / "for_review")
+
+
+def unsure_queue_dir(dataset_root: str | Path) -> Path:
+    """Where cocoons marked "Other (Unsure)" are queued for review: <root>/review/unsure.
+
+    It sits with every other review folder (QC rounds in review/<name>, finished ones in
+    review/done/). Before v0.8.2 the queue was <root>/for_review, beside images/; that
+    folder is left alone, and still suggested in Review mode if it is the only one there.
+    """
+    return Path(dataset_root) / "review" / "unsure"
+
+
+def legacy_unsure_queue_dir(dataset_root: str | Path) -> Path:
+    return Path(dataset_root) / "for_review"
 
 
 def review_dataset_root(review_dir: str | Path) -> Path:

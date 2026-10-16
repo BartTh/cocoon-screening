@@ -87,8 +87,10 @@ There are two modes in the application: Annotation and Review Mode. The former i
    If a cocoon is marked as `Other (Unsure)`, a scaled crop and metadata row are saved to:
 
     ```text
-    ../for_review/
+    ../review/unsure/
     ```
+
+   (Before v0.8.2 this was `../for_review/`; an existing one is left as it is.)
 
    If a cocoon is marked as `Exclude`, that instance is removed from the label map and from the classification CSV and also from the dropdown list.
 
@@ -99,22 +101,22 @@ There are two modes in the application: Annotation and Review Mode. The former i
    ```
 
 ### Review Mode
-1. If an images directory is already loaded in the annotation mode, the application automatically suggests its sibling `for_review` directory. You can also browse to another review directory or enter the path manually and press Enter.
+1. If an images directory is already loaded in the annotation mode, the application automatically suggests its Unsure queue, `../review/unsure` (or a legacy `../for_review`). You can also browse to another review directory or enter the path manually and press Enter.
 
-2. All cocoon instances in the `for_review` directory will be listed as review items. The active review queue is based only on crop files currently present. Historical CSV entries without a corresponding crop do not count toward the active review progress.
+2. All cocoon instances in the review directory will be listed as review items. The active review queue is based only on crop files currently present. Historical CSV entries without a corresponding crop do not count toward the active review progress.
     
 3. The first pending review item in the list will be displayed alongside its corresponding image ID and cocoon instance ID. Previously completed review decisions are restored automatically. Pending review items have no class selected.
 
 4. Choose a class using the label panel or keyboard shortcut. The decision updates the original classification CSV.
 
-   Any folder of review crops works, not only `for_review`. The original image, label map and classification CSV are found in the nearest folder up to four levels above the review folder that contains both `images/` and `labels/`. So review folders can be grouped, e.g. `interim/review/<name>` or `interim/review/done/<date>_<name>`, and a self-contained round with its own `images/` and `labels/` keeps writing to its own copies.
+   Any folder of review crops works, not only the Unsure queue. The original image, label map and classification CSV are found in the nearest folder up to four levels above the review folder that contains both `images/` and `labels/`. So review folders can be grouped, e.g. `interim/review/<name>` or `interim/review/done/<date>_<name>`, and a self-contained round with its own `images/` and `labels/` keeps writing to its own copies.
 
 5. After the decision is saved, the application automatically moves to the next review item. The Left and Right arrow keys or the dropdown menu can be used to move between review items without assigning a class.
 
 6. Review progress and history of past review sessions are stored in:
 
    ```text
-   ../for_review/for_review.csv
+   <review directory>/for_review.csv
    ```
 
     The CSV contains the following fields:
@@ -135,7 +137,7 @@ There are two modes in the application: Annotation and Review Mode. The former i
    - rechecks the review directory and metadata
    - regenerates pending overlays once per affected original image
    - clears the corresponding `overlay_pending` flags after successful writes
-   - removes the completed crop images from `for_review`
+   - removes the completed crop images from the review directory
    - keeps `for_review.csv` as the review history
 
 ## Keyboard Shortcuts
@@ -158,7 +160,7 @@ data/
   images/             # Imported JPG images
   labels/             # Label maps and classification CSV files
   overlays/           # Completed class color overlays
-  for_review/         # Unclear cocoons that need to be reviewed
+  review/             # Review folders: unsure/ (the app's Unsure queue), QC rounds, done/
   image_registry.csv  # Maps image_id to batch_id and original DICOM name
 ```
 

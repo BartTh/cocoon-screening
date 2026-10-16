@@ -21,6 +21,7 @@ from src.cocoon_screening.paths import (
     app_version, remembered_directory, remember_directory,
     bundled_configs_dir, default_images_dir, default_review_dir,
     browse_start_directory, normalize_directory, review_dataset_root,
+    unsure_queue_dir, legacy_unsure_queue_dir,
 )
 from src.cocoon_screening.ui.utils import array_to_pixmap
 from src.cocoon_screening.processing.image_processing import draw_instance_overlay, render_completed_image_overlay, crop_instances
@@ -376,7 +377,7 @@ class MainWindow(QMainWindow):
         - change image directory label to "Review Directory"
         -
         - hide or label/ import xray button
-        - change the directory input to default "for_review" of last image directory or set to placeholder if no previous directory
+        - change the directory input to the Unsure queue (review/unsure) of the last image directory, or set to placeholder if none
         - hide shortcuts for image navigation
         - remove last displayed cocoon, remove image id, cocoon id
         - replace image status with review status
@@ -410,7 +411,9 @@ class MainWindow(QMainWindow):
         self.image_display.setPixmap(self.pixmap)
 
         if image_dir is not None:
-            default_review_dir = image_dir.parent / "for_review"
+            default_review_dir = unsure_queue_dir(image_dir.parent)
+            if not default_review_dir.exists():
+                default_review_dir = legacy_unsure_queue_dir(image_dir.parent)
             if default_review_dir.exists():
                 if self.confirm_relative_directory(
                     "Open Review Directory",
@@ -648,7 +651,7 @@ class MainWindow(QMainWindow):
         self.next_cocoon()
 
     def for_review_directory(self):
-        return self.current_image.parent.parent / "for_review"
+        return unsure_queue_dir(self.current_image.parent.parent)
 
     def label_map_file_path(self):
         return self.labels_path_dict[self.current_image.stem]
