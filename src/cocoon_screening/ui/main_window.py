@@ -318,7 +318,25 @@ class MainWindow(QMainWindow):
 
         labels_container.setLayout(self.labels_layout)
 
-        annotation_layout.addWidget(labels_container, alignment=Qt.AlignCenter)
+        # The labelling rules at a glance, under the class buttons (configs/protocol.md,
+        # a short form of LABELLING_PROTOCOL.md in the project folder)
+        side_panel = QWidget()
+        side_layout = QVBoxLayout(side_panel)
+        side_layout.setAlignment(Qt.AlignTop)
+        side_layout.addWidget(labels_container)
+        protocol_path = bundled_configs_dir() / "protocol.md"
+        if protocol_path.exists():
+            self.protocol_panel = QLabel()
+            self.protocol_panel.setTextFormat(Qt.MarkdownText)
+            self.protocol_panel.setText(protocol_path.read_text(encoding="utf-8"))
+            self.protocol_panel.setWordWrap(True)
+            self.protocol_panel.setMaximumWidth(280)
+            self.protocol_panel.setStyleSheet(
+                "QLabel { font-size: 11px; color: #333; background: #f4f4f4;"
+                " border: 1px solid #ddd; border-radius: 4px; padding: 6px; }")
+            side_layout.addWidget(self.protocol_panel)
+
+        annotation_layout.addWidget(side_panel, alignment=Qt.AlignCenter)
         main_layout.addWidget(annotation_container, alignment=Qt.AlignCenter)
 
         main_layout.addStretch()
@@ -1970,10 +1988,14 @@ class MainWindow(QMainWindow):
         logger.exception("%s: %s", title, message)
         QMessageBox.critical(self, title, f"{message}\n\nError: {error}")
 
+    def last_label_key(self):
+        """The highest digit key that selects a class (shortcuts cover the digits 0-9)."""
+        return str(min(len(self.label_set), 10) - 1)
+
     def create_annotation_shortcut_bar(self):
         shortcuts = [
             ((["\u2190"], "", "Previous cocoon"), (["Ctrl", "\u2190"], "+", "Previous image")),
-            ((["0", "7"], "-", "Choose label"), (["Space"], "", "Show/hide overlay")),
+            ((["0", self.last_label_key()], "-", "Choose label"), (["Space"], "", "Show/hide overlay")),
             ((["\u2192"], "", "Next cocoon"), (["Ctrl", "\u2192"], "+", "Next image")),
         ]
 
@@ -1981,8 +2003,8 @@ class MainWindow(QMainWindow):
 
     def create_review_shortcut_bar(self):
         shortcuts = [
-            ((["\u2190"], "", "Previous review item"), None),
-            ((["0", "7"], "-", "Choose label"), (["Space"], "", "Show/hide overlay")),
+            ((["\u2190"], "", "Previous review item"), (["\u2191", "\u2193"], "/", "CT slices (or scroll)")),
+            ((["0", self.last_label_key()], "-", "Choose label"), (["Space"], "", "Show/hide overlay")),
             ((["\u2192"], "", "Next review item"), None),
         ]
 
