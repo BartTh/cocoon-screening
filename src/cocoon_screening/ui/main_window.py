@@ -24,6 +24,7 @@ from src.cocoon_screening.paths import (
     unsure_queue_dir, legacy_unsure_queue_dir,
 )
 from src.cocoon_screening.ui.utils import array_to_pixmap
+from src.cocoon_screening.ui.ct_stack import densest_slice, load_ct_stack, render_ct_view
 from src.cocoon_screening.processing.image_processing import draw_instance_overlay, render_completed_image_overlay, crop_instances
 from src.cocoon_screening.domain.label_set import load_labels
 from src.cocoon_screening.ui.dialogs.import_xray_dialog import ImportXrayDialog
@@ -63,6 +64,10 @@ class MainWindow(QMainWindow):
         self._shortcut_states = []
         self.show_overlay = True
         self.show_review_overlay = False
+        # Review crops made from a CT scan carry a CT stack: scroll through it (v0.9.0)
+        self.current_ct_stack = None
+        self.current_ct_index = 0
+        self.show_ct_outline = True
         self._review_label_maps = {}
         self.init_ui()
         self._worker_thread = QThread(self)
@@ -529,6 +534,12 @@ class MainWindow(QMainWindow):
         toggle_overlay_shortcut = QShortcut(QKeySequence("Space"), self)
         toggle_overlay_shortcut.activated.connect(self.toggle_overlay)
 
+        # CT stack of a review crop: move up / down through the slices
+        ct_up_shortcut = QShortcut(QKeySequence("Up"), self)
+        ct_up_shortcut.activated.connect(lambda: self.step_ct_slice(-1))
+        ct_down_shortcut = QShortcut(QKeySequence("Down"), self)
+        ct_down_shortcut.activated.connect(lambda: self.step_ct_slice(1))
+
         # Label selection shortcuts: the digit keys 0-9, one per class index
         for i in range(min(len(self.label_set), 10)):
             label_shortcut = QShortcut(QKeySequence(f"{i}"), self)
@@ -865,7 +876,10 @@ class MainWindow(QMainWindow):
         if getattr(self, "_busy", False):
             return
         if getattr(self, "mode", None) == AppMode.REVIEW:
-            self.show_review_overlay = not self.show_review_overlay
+            if self.current_ct_stack is not None:
+                self.show_ct_outline = not self.show_ct_outline
+            else:
+                self.show_review_overlay = not self.show_review_overlay
             self.refresh_review_pixmap()
             return
         self.show_overlay = not self.show_overlay
@@ -913,7 +927,30 @@ class MainWindow(QMainWindow):
         crop = getattr(self, "current_review_crop", None)
         if item is None or crop is None:
             return
+        if self.current_ct_stack is not None:
+            view = render_ct_view(self.current_ct_stack, self.current_ct_index, self.show_ct_outline)
+            self.image_display.setPixmap(array_to_pixmap(view))
+            return
         self.image_display.setPixmap(self.review_crop_pixmap(item, crop))
+
+    def step_ct_slice(self, step):
+        """Up / Down / scroll wheel: the next CT slice of the review crop on screen."""
+        if getattr(self, "mode", None) != AppMode.REVIEW or self.current_ct_stack is None:
+            return
+        last = len(self.current_ct_stack["slices"]) - 1
+        index = min(max(self.current_ct_index + step, 0), last)
+        if index != self.current_ct_index:
+            self.current_ct_index = index
+            self.refresh_review_pixmap()
+
+    def wheelEvent(self, event):
+        if getattr(self, "mode", None) == AppMode.REVIEW and self.current_ct_stack is not None:
+            delta = event.angleDelta().y()
+            if delta:
+                self.step_ct_slice(-1 if delta > 0 else 1)
+                event.accept()
+                return
+        super().wheelEvent(event)
 
     def refresh_cocoon_pixmap(self):
         """Redraw the current cocoon only; selection and saved labels are untouched."""
@@ -1184,6 +1221,7 @@ class MainWindow(QMainWindow):
             self.show_error("Error", "Failed to load directory", error)
 
     def clear_state(self):
+        self.current_ct_stack = None
         self.images_path_dict = {}
         self.labels_path_dict = {}
         self.current_crops = {}
@@ -1523,7 +1561,10 @@ class MainWindow(QMainWindow):
         self.current_review_index = index
         self.current_review_item = item
         self.current_review_crop = crop
-        self.image_display.setPixmap(self.review_crop_pixmap(item, crop))
+        self.current_ct_stack = load_ct_stack(item.crop_path)
+        if self.current_ct_stack is not None:
+            self.current_ct_index = densest_slice(self.current_ct_stack)
+        self.refresh_review_pixmap()
         self.set_review_selection(selection)
 
         dropdown = self.review_item_counter_dropdown
